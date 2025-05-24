@@ -23,16 +23,16 @@ spec:
             name: django-config
         livenessProbe:
           httpGet:
-            path: /health/
+            path: /api/demo/
             port: 8000
           initialDelaySeconds: 10
-          periodSeconds: 10
+          periodSeconds: 15
         readinessProbe:
           httpGet:
-            path: /health/
+            path: /api/demo/
             port: 8000
           initialDelaySeconds: 5
-          periodSeconds: 5
+          periodSeconds: 10
         resources:
           requests:
             cpu: "200m"
