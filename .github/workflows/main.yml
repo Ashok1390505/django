@@ -1,0 +1,127 @@
+
+name: CI/CD Pipeline
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+<<<<<<< HEAD
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Django checks
+      run: python manage.py check
+      # Step 5: Set up kubectl
+=======
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+>>>>>>> 1f53b8b8091c0f3cb23ce2bc422d42a19dbf45dd
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v2.0
+        with:
+          version: 'v1.27.0'
+        id: install
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+
+      - name: Build, tag, and push docker image to Amazon ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: django-k8s-demo
+          IMAGE_TAG: ${{ github.run_number }}
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+
+
+      # - name: Scan Docker image in ECR
+      #   run: |
+      #     aws ecr start-image-scan --repository-name django-k8s-demo --image-id imageTag=${{ github.run_number }}
+
+
+      # - name: Wait for image scan to complete
+      #   run: |
+      #     STATUS="IN_PROGRESS"
+      #     for i in {1..10}; do
+      #       STATUS=$(aws ecr describe-image-scan-findings \
+      #         --repository-name django-k8s-demo \
+      #         --image-id imageTag=${{ github.run_number }} \
+      #         --query 'imageScanStatus.status' --output text)
+      #       echo "Current scan status: $STATUS"
+      #       if [ "$STATUS" != "IN_PROGRESS" ]; then break; fi
+      #       sleep 30
+      #     done
+
+
+      # - name: Check image scan findings
+      #   run: |
+      #     SCAN_FINDINGS=$(aws ecr describe-image-scan-findings \
+      #       --repository-name django-k8s-demo \
+      #       --image-id imageTag=${{ github.run_number }} \
+      #       --query 'imageScanFindings.findings' --output json)
+      #     VULNERABILITIES=$(echo $SCAN_FINDINGS | jq length)
+      #     if [ "$VULNERABILITIES" -gt 0 ]; then
+      #       echo "Image has vulnerabilities!"
+      #       echo $SCAN_FINDINGS
+      #       exit 1
+      #     else
+      #       echo "No vulnerabilities found."
+      #     fi
+
+
+      - name: Update kube config
+        run: aws eks update-kubeconfig --name demo
+
+
+      - name: Update deployment YAML with build number
+        run: |
+          sed -i "s|\${BUILD_NUMBER}|${{ github.run_number }}|g" ./k8s/deployment.yaml
+
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f ./k8s/
+
+
+      - name: Wait for deployment rollout status
+        run: |
+          kubectl rollout status deployment/django-app -n default
+
+
+      - name: Rollback to previous version if deployment fails
+        if: failure()
+        run: |
+          kubectl rollout undo deployment/django-app -n default

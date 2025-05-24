@@ -1,1 +1,1 @@
-# django
+# django-webapp-demo
