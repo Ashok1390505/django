@@ -24,9 +24,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # - name: Run Django checks
-      #   run: python manage.py check
-      # Step 5: Set up kubectl
+       - name: Run Django checks
+         run: python manage.py check
+         Step 5: Set up kubectl
       
       - name: Install kubectl
         uses: azure/setup-kubectl@v2.0
