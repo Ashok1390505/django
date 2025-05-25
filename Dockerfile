@@ -14,7 +14,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy Django project
-COPY webapp /app/webapp
+COPY webapp/app/webapp
 
 # --- Final Stage ---
 FROM python:3.10-slim
