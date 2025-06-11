@@ -39,7 +39,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ap-south-1
 
 
       - name: Login to Amazon ECR
@@ -57,39 +57,39 @@ jobs:
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
 
 
-      # - name: Scan Docker image in ECR
-      #   run: |
-      #     aws ecr start-image-scan --repository-name django-k8s-demo --image-id imageTag=${{ github.run_number }}
+      - name: Scan Docker image in ECR
+        run: |
+         aws ecr start-image-scan --repository-name django-k8s-demo --image-id imageTag=${{ github.run_number }}
 
 
-      # - name: Wait for image scan to complete
-      #   run: |
-      #     STATUS="IN_PROGRESS"
-      #     for i in {1..10}; do
-      #       STATUS=$(aws ecr describe-image-scan-findings \
-      #         --repository-name django-k8s-demo \
-      #         --image-id imageTag=${{ github.run_number }} \
-      #         --query 'imageScanStatus.status' --output text)
-      #       echo "Current scan status: $STATUS"
-      #       if [ "$STATUS" != "IN_PROGRESS" ]; then break; fi
-      #       sleep 30
-      #     done
+      - name: Wait for image scan to complete
+       run: |
+         STATUS="IN_PROGRESS"
+          for i in {1..10}; do
+            STATUS=$(aws ecr describe-image-scan-findings \
+              --repository-name django-k8s-demo \
+              --image-id imageTag=${{ github.run_number }} \
+              --query 'imageScanStatus.status' --output text)
+             echo "Current scan status: $STATUS"
+            if [ "$STATUS" != "IN_PROGRESS" ]; then break; fi
+             sleep 30
+           done
 
 
-      # - name: Check image scan findings
-      #   run: |
-      #     SCAN_FINDINGS=$(aws ecr describe-image-scan-findings \
-      #       --repository-name django-k8s-demo \
-      #       --image-id imageTag=${{ github.run_number }} \
-      #       --query 'imageScanFindings.findings' --output json)
-      #     VULNERABILITIES=$(echo $SCAN_FINDINGS | jq length)
-      #     if [ "$VULNERABILITIES" -gt 0 ]; then
-      #       echo "Image has vulnerabilities!"
-      #       echo $SCAN_FINDINGS
-      #       exit 1
-      #     else
-      #       echo "No vulnerabilities found."
-      #     fi
+       - name: Check image scan findings
+         run: |
+           SCAN_FINDINGS=$(aws ecr describe-image-scan-findings \
+             --repository-name django-k8s-demo \
+             --image-id imageTag=${{ github.run_number }} \
+            --query 'imageScanFindings.findings' --output json)
+           VULNERABILITIES=$(echo $SCAN_FINDINGS | jq length)
+           if [ "$VULNERABILITIES" -gt 0 ]; then
+             echo "Image has vulnerabilities!"
+             echo $SCAN_FINDINGS
+             exit 1
+           else
+             echo "No vulnerabilities found."
+           fi
 
 
       - name: Update kube config
